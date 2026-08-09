@@ -143,3 +143,7 @@ The script creates the SQLite database and loads the scraped data.
 - books.db
 - sql_queries_output.txt
 - README.md 
+
+## Status
+
+Module 1 data pipeline implementation completed. 
