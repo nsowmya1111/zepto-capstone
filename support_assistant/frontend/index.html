@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Zepto Support Assistant</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 600px;
+            height: 700px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+
+        .header {
+            background: #222;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .header p {
+            margin: 6px 0 0;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        /* Chat messages */
+
+        .chat-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+
+        .user-message {
+            justify-content: flex-end;
+        }
+
+        .bot-message {
+            justify-content: flex-start;
+        }
+
+        .bubble {
+            max-width: 75%;
+            padding: 12px 15px;
+            border-radius: 12px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .user-message .bubble {
+            background: #222;
+            color: white;
+            border-bottom-right-radius: 3px;
+        }
+
+        .bot-message .bubble {
+            background: #eaeaea;
+            color: #222;
+            border-bottom-left-radius: 3px;
+        }
+
+        .sources {
+            font-size: 11px;
+            color: #777;
+            margin-top: 8px;
+        }
+
+        .confidence {
+            font-size: 11px;
+            color: #777;
+            margin-top: 3px;
+        }
+
+        /* Input area */
+
+        .input-area {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background: white;
+            gap: 10px;
+        }
+
+        #question {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        #question:focus {
+            border-color: #222;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        /* Mobile */
+
+        @media (max-width: 650px) {
+
+            .chat-container {
+                width: 95%;
+                height: 90vh;
+            }
+
+            .bubble {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="chat-container">
+
+    <!-- Header -->
+
+    <div class="header">
+
+        <h1>Zepto Support Assistant</h1>
+
+        <p>Ask questions about Zepto policies</p>
+
+    </div>
+
+
+    <!-- Chat area -->
+
+    <div class="chat-box" id="chatBox">
+
+        <div class="message bot-message">
+
+            <div class="bubble">
+
+                👋 Hello! I'm the Zepto Support Assistant.
+
+                <br><br>
+
+                Ask me anything about Zepto policies such as
+                delivery, cancellation, returns, refunds, and more.
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Input area -->
+
+    <div class="input-area">
+
+        <input
+            type="text"
+            id="question"
+            placeholder="Ask your question..."
+            autocomplete="off"
+        >
+
+        <button id="sendButton" onclick="askQuestion()">
+            Send
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    const questionInput = document.getElementById("question");
+
+    const chatBox = document.getElementById("chatBox");
+
+    const sendButton = document.getElementById("sendButton");
+
+
+    // Send question when Enter is pressed
+
+    questionInput.addEventListener("keydown", function(event) {
+
+        if (event.key === "Enter") {
+
+            askQuestion();
+
+        }
+
+    });
+
+
+    async function askQuestion() {
+
+        const question = questionInput.value.trim();
+
+
+        // Don't send empty questions
+
+        if (!question) {
+
+            return;
+
+        }
+
+
+        // Add user message
+
+        addMessage(question, "user");
+
+
+        // Clear input
+
+        questionInput.value = "";
+
+
+        // Disable button
+
+        sendButton.disabled = true;
+
+        sendButton.innerText = "Thinking...";
+
+
+        // Add temporary bot message
+
+        const loadingMessage = addMessage(
+            "Thinking...",
+            "bot"
+        );
+
+
+        try {
+
+            const response = await fetch(
+                "http://127.0.0.1:8000/ask",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        query: question
+                    })
+                }
+            );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Server returned an error"
+                );
+
+            }
+
+
+            const data = await response.json();
+
+
+            // Remove Thinking message
+
+            loadingMessage.remove();
+
+
+            // Add actual answer
+
+            addBotResponse(data);
+
+
+        }
+
+        catch (error) {
+
+            loadingMessage.remove();
+
+            addMessage(
+                "❌ Unable to connect to the support assistant. Please make sure the server is running.",
+                "bot"
+            );
+
+            console.error(error);
+
+        }
+
+
+        // Enable button
+
+        sendButton.disabled = false;
+
+        sendButton.innerText = "Send";
+
+
+        // Focus input
+
+        questionInput.focus();
+
+    }
+
+
+    function addMessage(text, type) {
+
+        const message = document.createElement("div");
+
+        message.className =
+            type === "user"
+            ? "message user-message"
+            : "message bot-message";
+
+
+        const bubble = document.createElement("div");
+
+        bubble.className = "bubble";
+
+        bubble.innerText = text;
+
+
+        message.appendChild(bubble);
+
+        chatBox.appendChild(message);
+
+
+        // Scroll to bottom
+
+        chatBox.scrollTop =
+            chatBox.scrollHeight;
+
+
+        return message;
+
+    }
+
+
+    function addBotResponse(data) {
+
+        const message = document.createElement("div");
+
+        message.className =
+            "message bot-message";
+
+
+        const bubble = document.createElement("div");
+
+        bubble.className = "bubble";
+
+
+        // Answer
+
+        const answer = document.createElement("div");
+
+        answer.innerText =
+            data.answer || "No answer received.";
+
+
+        bubble.appendChild(answer);
+
+
+        // Sources
+
+        if (
+            data.sources &&
+            data.sources.length > 0
+        ) {
+
+            const sources = document.createElement("div");
+
+            sources.className = "sources";
+
+            sources.innerText =
+                "Sources: " +
+                data.sources.join(", ");
+
+
+            bubble.appendChild(sources);
+
+        }
+
+
+        // Confidence
+
+        if (
+            data.confidence !== undefined
+        ) {
+
+            const confidence =
+                document.createElement("div");
+
+            confidence.className =
+                "confidence";
+
+
+            confidence.innerText =
+                "Confidence: " +
+                Math.round(
+                    data.confidence * 100
+                ) +
+                "%";
+
+
+            bubble.appendChild(confidence);
+
+        }
+
+
+        message.appendChild(bubble);
+
+        chatBox.appendChild(message);
+
+
+        // Scroll to bottom
+
+        chatBox.scrollTop =
+            chatBox.scrollHeight;
+
+    }
+
+</script>
+
+</body>
+</html>
